@@ -1,0 +1,27 @@
+* {
+    margin: 0;
+    outline: none;
+}
+
+/* Not allowing person to drag img */
+img {
+    pointer-events: none;
+}
+
+/* Making all content be in the center */
+body {
+    font-family: Tahoma, Geneva, Verdana, Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background-image: url("../material/png/background-body-table.jpg");
+}
+
+.main_limits {
+    min-width: 320px;
+    max-width: 1280px;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
