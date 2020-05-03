@@ -7,8 +7,15 @@ var Timer;
     для меньшей загрузки на страницу
 */
 var ChangesOnPage = false;
-// Проверк  для кнопки новой игры
+// Проверка  для кнопки новой игры
 var aimOnButtonNewGame = false;
+// Проверка для отрисовки кораблей
+var ShipsInGame = false;
+// Проверка для отрисовки прицела
+var aimOnEnemyField = false;
+// положение прицела
+var positionAimX;
+var positionAimY;
 /* "canvas" */
 var ctx;
 /* Путь к картинкам */
@@ -34,18 +41,30 @@ var imgBackgroundGameHeight = 700;
 
 // Картинка "Новой игры" 
 var imgNewGame = new Image();
-var imgNewGamePosX = 217;
+var imgNewGamePosX = 187;
 var imgNewGamePosY = 52;
 var imgNewGameWidth = 300;
 var imgNewGameHeight = 50;
 
 // Картинка "Новой игры" при нажатие
 var imgNewGameChosen = new Image();
-var imgNewGameChosenPosX = 207;
+var imgNewGameChosenPosX = 177;
 var imgNewGameChosenPosY = 25;
 var imgNewGameChosenWidth = 420;
 var imgNewGameChosenHeight = 83;
 
+// Начальная позиция для кораблей у Игрока
+var positionOfFirstCubePersonX = 76;
+var positionOfFirstCubePersonY = 167;
+// Начальная позиция для кораблей у ПК
+var positionOfFirstCubePCX = 600;
+var positionOfFirstCubePCY = 167;
+// Размеры картинки "1-клеточного корабля"
+var imgShipOneWidth = 47;
+var imgShipOneHeight = 42;
+// размер игрового поля врага
+var widthGameFieldPCX = 526;
+var widthGameFieldPCY = 470;
 /* Элементы игровой механики */
 // Массив для рандома поля игры пользователя
 var arrayOfEmpyPositionsPerson = new Array(10);
@@ -56,10 +75,102 @@ var arrayOfGameFieldPC = [];
 
 //////////////////////////////////// Functions ////////////////////////////////////////
 
+/* Рендер курсора прицела на вражеском поле */
+function renderCursorOnEnemyField() {
+    if (arrayOfGameFieldPC[positionAimY][positionAimX] >= 0) {
+        ctx.drawImage(imgAim, positionOfFirstCubePCX + positionAimX * 52.9, positionOfFirstCubePCY + positionAimY * 47.4, imgShipOneWidth, imgShipOneHeight);
+    }
+}
+
+/* Рендер всех кораблей, попадений, промахов на игровом поле */
+function renderShipsHitsMisses(arrayOfField, positionOfFirstCubeX, positionOfFirstCubeY) {
+    let whichShip;
+    for (let i = 0; i < 10; i++)
+        for (let j = 0; j < 10; j++) {
+            if (arrayOfField[i][j] != 0) {
+                if (arrayOfField[i][j] <= 4 && arrayOfField[i][j] >= -4) {
+                    // Рисуем корабль в 1 клетке
+                    ctx.drawImage(imgShips[0], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    // Рисуем пожар
+                    if (arrayOfField[i][j] < 0)
+                        ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                } else if (arrayOfField[i][j] <= 7 && arrayOfField[i][j] >= -7) {
+                    // Рисуем корабль в 2 клетках
+                    if (j != 9 && (arrayOfField[i][j + 1] == arrayOfField[i][j] || arrayOfField[i][j + 1] == -arrayOfField[i][j])) {
+                        //Рисуем корабль горизонтально
+                        ctx.drawImage(imgShips[1], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth * 2, imgShipOneHeight);
+                        // Рисуем пожар
+                        if (arrayOfField[i][j] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                        if (arrayOfField[i][j + 1] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + (j + 1) * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    } else if (i != 9 && (arrayOfField[i + 1][j] == arrayOfField[i][j] || arrayOfField[i + 1][j] == -arrayOfField[i][j])) {
+                        //Рисуем корабль вертикально
+                        ctx.drawImage(imgShips[5], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight * 2);
+                        // Рисуем пожар
+                        if (arrayOfField[i][j] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                        if (arrayOfField[i + 1][j] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + (i + 1) * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    }
+                } else if (arrayOfField[i][j] <= 9 && arrayOfField[i][j] >= -9) {
+                    // Рисуем корабль в 3 клетках 
+                    if (j < 8 && (arrayOfField[i][j + 1] == arrayOfField[i][j] || arrayOfField[i][j + 1] == -arrayOfField[i][j]) && (arrayOfField[i][j + 2] == arrayOfField[i][j] || arrayOfField[i][j + 2] == -arrayOfField[i][j])) {
+                        //Рисуем корабль горизонтально
+                        ctx.drawImage(imgShips[2], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth * 3, imgShipOneHeight);
+                        // Рисуем пожар
+                        if (arrayOfField[i][j] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                        if (arrayOfField[i][j + 1] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + (j + 1) * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                        if (arrayOfField[i][j + 2] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + (j + 2) * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    } else if (i < 8 && (arrayOfField[i + 1][j] == arrayOfField[i][j] || arrayOfField[i + 1][j] == -arrayOfField[i][j]) && (arrayOfField[i + 2][j] == arrayOfField[i][j] || arrayOfField[i + 2][j] == -arrayOfField[i][j])) {
+                        //Рисуем корабль вертикально
+                        ctx.drawImage(imgShips[6], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight * 3);
+                        // Рисуем пожар
+                        if (arrayOfField[i][j] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                        if (arrayOfField[i + 1][j] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + (i + 1) * 47.4, imgShipOneWidth, imgShipOneHeight);
+                        if (arrayOfField[i + 2][j] < 0)
+                            ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + (i + 2) * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    }
+                } else if (j < 7 && (arrayOfField[i][j + 1] == arrayOfField[i][j] || arrayOfField[i][j + 1] == -arrayOfField[i][j]) && (arrayOfField[i][j + 2] == arrayOfField[i][j] || arrayOfField[i][j + 2] == -arrayOfField[i][j]) && (arrayOfField[i][j + 3] == arrayOfField[i][j] || arrayOfField[i][j + 3] == -arrayOfField[i][j])) {
+                    //Рисуем корабль горизонтально
+                    ctx.drawImage(imgShips[3], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth * 4, imgShipOneHeight);
+                    // Рисуем пожар
+                    if (arrayOfField[i][j] < 0)
+                        ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    if (arrayOfField[i][j + 1] < 0)
+                        ctx.drawImage(imgHit, positionOfFirstCubeX + (j + 1) * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    if (arrayOfField[i][j + 2] < 0)
+                        ctx.drawImage(imgHit, positionOfFirstCubeX + (j + 2) * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    if (arrayOfField[i][j + 3] < 0)
+                        ctx.drawImage(imgHit, positionOfFirstCubeX + (j + 3) * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                } else if (i < 7 && (arrayOfField[i + 1][j] == arrayOfField[i][j] || arrayOfField[i + 1][j] == -arrayOfField[i][j]) && (arrayOfField[i + 2][j] == arrayOfField[i][j] || arrayOfField[i + 2][j] == -arrayOfField[i][j]) && (arrayOfField[i + 3][j] == arrayOfField[i][j] || arrayOfField[i + 3][j] == -arrayOfField[i][j])) {
+                    //Рисуем корабль вертикально
+                    ctx.drawImage(imgShips[7], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight * 4);
+                    // Рисуем пожар
+                    if (arrayOfField[i][j] < 0)
+                        ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    if (arrayOfField[i + 1][j] < 0)
+                        ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + (i + 1) * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    if (arrayOfField[i + 2][j] < 0)
+                        ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + (i + 2) * 47.4, imgShipOneWidth, imgShipOneHeight);
+                    if (arrayOfField[i + 3][j] < 0)
+                        ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + (i + 3) * 47.4, imgShipOneWidth, imgShipOneHeight);
+                } else if (arrayOfField[i][j] == -100) {
+                    // Рисуем промах
+                    ctx.drawImage(imgMiss, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
+                }
+            }
+        }
+}
+
 /* Рендер игрового поля */
 function renderGameField() {
     if (ChangesOnPage) {
-        ctx = document.querySelector(".game").getContext('2d');
         ctx.clearRect(0, 0, ctx.width, ctx.height);
         // рендер поля игры
         ctx.drawImage(imgBackgroundGame, imgBackgroundGamePosX, imgBackgroundGamePosY,
@@ -69,6 +180,15 @@ function renderGameField() {
             ctx.drawImage(imgNewGameChosen, imgNewGameChosenPosX, imgNewGameChosenPosY, imgNewGameChosenWidth, imgNewGameChosenHeight);
         else
             ctx.drawImage(imgNewGame, imgNewGamePosX, imgNewGamePosY, imgNewGameWidth, imgNewGameHeight);
+        // рендер кораблей
+        if (ShipsInGame) {
+            renderShipsHitsMisses(arrayOfGameFieldPerson, positionOfFirstCubePersonX, positionOfFirstCubePersonY);
+            renderShipsHitsMisses(arrayOfGameFieldPC, positionOfFirstCubePCX, positionOfFirstCubePCY);
+        }
+        // рендер курсора прицела на вражеском поле
+        if (aimOnEnemyField) {
+            renderCursorOnEnemyField();
+        }
         ChangesOnPage = false;
     }
 }
@@ -94,9 +214,12 @@ function setUpAllImg() {
     // Запись всех картинок для рендера
     // Запись всех картинок караблей
     for (let i = 1; i <= 4; i++) {
-        imageShip = new Image();
-        imageShip.src = srcImgs + "ship-" + i + "-horizontal.png";
-        imgShips[i - 1] = imageShip;
+        imageShipH = new Image();
+        imageShipH.src = srcImgs + "ship-" + i + "-horizontal.png";
+        imgShips[i - 1] = imageShipH;
+        imageShipV = new Image();
+        imageShipV.src = srcImgs + "ship-" + i + "-vertical.png";
+        imgShips[3 + i] = imageShipV;
     }
     // Запись остальных картинок
     imgAim.src = srcImgs + "aim.png";
@@ -109,15 +232,16 @@ function setUpAllImg() {
 }
 
 /* Рандом кораблей для игрового поля */
-function randowAllShips(arrayOfField, arrayOfFieldEmptyPos) {
+function randomAllShips(arrayOfField, arrayOfFieldEmptyPos) {
     /*
-        Ставит
+        Ставит корбли с собственным id 
         1 корабль - 4 клетки
         2 корабля - 3 клетки
         3 корабля - 2 клетки
         4 корабля - 1 клетка
     */
-    let ships = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4];
+    let idForShips = 10;
+    let ships = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
     let countSearchForPlace = 0;
     let tempArrayOfFieldEmptyPos = arrayOfFieldEmptyPos;
 
@@ -140,8 +264,8 @@ function randowAllShips(arrayOfField, arrayOfFieldEmptyPos) {
             1 - горизонтально, если не вышло, то вертикально
             2 - вертикально, если не вышло, горизонтально
         */
-        let placeByRandom = GetRandomInt(1,2);
-        
+        let placeByRandom = GetRandomInt(1, 2);
+
         // Ставим сначала горизонтально, если не получается, то вертикально
         if (placeByRandom == 1) {
             // Поиск места горизонтально около выбранной позиции
@@ -163,7 +287,7 @@ function randowAllShips(arrayOfField, arrayOfFieldEmptyPos) {
             // Ставим горизонтально корабль
             if (placeShipHorizontal) {
                 for (let i = 0; i < lengthOfShip; i++)
-                    arrayOfField[y][x + i] = lengthOfShip;
+                    arrayOfField[y][x + i] = idForShips;
 
                 // Убираем свободные позиции, в которые записали корабль
                 // для будущего рандома других кораблей
@@ -174,7 +298,7 @@ function randowAllShips(arrayOfField, arrayOfFieldEmptyPos) {
             // Ставим вертикально корабль
             if (placeShipVertical) {
                 for (let i = 0; i < lengthOfShip; i++)
-                    arrayOfField[y + i][x] = lengthOfShip;
+                    arrayOfField[y + i][x] = idForShips;
 
 
                 // Убираем свободные позиции, в которые записали корабль
@@ -187,7 +311,8 @@ function randowAllShips(arrayOfField, arrayOfFieldEmptyPos) {
 
             tempArrayOfFieldEmptyPos = arrayOfFieldEmptyPos;
             countSearchForPlace++;
-            console.log(countSearchForPlace);
+            idForShips--;
+
         } else {
             // Если не получилось поставить корабль в данную точку, то исключаем ее 
             // В следующих пробегах
@@ -209,7 +334,7 @@ function checkIfCanPlaceShipHorizontal(tempLengthOfShip, tempArrayOfField, X, Y)
 
         for (let i = 0; i < tempLengthOfShip; i++) {
             // Чтобы не заходить вне массива
-            if ((X - i + j) <= 10 && (X - i + j) >= 0) {
+            if ((X - i + j) < 10 && (X - i + j) >= 0) {
                 if (tempArrayOfField[Y][X - i + j] != 0)
                     canPlaceShip = false;
             } else {
@@ -242,7 +367,7 @@ function checkIfCanPlaceShipVertical(lengthOfShip, arrayOfField, x, y) {
 
         for (let i = 0; i < lengthOfShip; i++) {
             // Чтобы не заходить вне массива
-            if ((y - i + j) <= 10 && (y - i + j) >= 0) {
+            if ((y - i + j) < 10 && (y - i + j) >= 0) {
                 if (arrayOfField[y - i + j][x] != 0)
                     canPlaceShip = false;
             } else {
@@ -278,10 +403,45 @@ function findPositionFrom1Dto2D(position) {
 function findPositionFrom2Dto1D(x, y) {
     return (y * 10 + x);
 }
+
+/* Игрок целиться с возможностью выстрелить */
+function makeAimOnEnemyField(event, click) {
+    let x = event.offsetX;
+    let y = event.offsetY;
+    // Игрок целит по вражескому полю
+    if (x >= positionOfFirstCubePCX && x <= (positionOfFirstCubePCX + widthGameFieldPCX) && y >= positionOfFirstCubePCY && y <= (positionOfFirstCubePCY + widthGameFieldPCY)) {
+        for (let i = 0; i < 10; i++) {
+            for (let j = 0; j < 10; j++) {
+                if (x >= (positionOfFirstCubePCX + j * 52.9) && x <= (positionOfFirstCubePCX + j * 52.9 + imgShipOneWidth) && y >= (positionOfFirstCubePCY + i * 47.4) && y <= (positionOfFirstCubePCY + i * 47.4 + imgShipOneHeight)) {
+                    aimOnEnemyField = true;
+                    ChangesOnPage = true;
+                    positionAimX = j;
+                    positionAimY = i;
+                    // Игрок стреляет по ПК
+                    if (click) {
+                        if (arrayOfGameFieldPC[i][j] >= 0)
+                            // Игрок попал по кораблю ПК
+                            makeFire(arrayOfGameFieldPC, positionAimX, positionAimY);
+                        ChangesOnPage = true;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* Стрельба по кораблю */
+function makeFire(arrayOfField, x, y) {
+    if (arrayOfField[y][x] != 0)
+        arrayOfField[y][x] = -arrayOfField[y][x];
+    else arrayOfField[y][x] = -100; // Промах
+}
+
 //////////////////////////////////// Events ///////////////////////////////////////////
 
 /* Загрузка страницы */
 document.addEventListener('DOMContentLoaded', function () {
+    ctx = document.querySelector(".game").getContext('2d');
     ChangesOnPage = true;
     // Загрузка всех игрровых изображений 
     setUpAllImg();
@@ -301,16 +461,18 @@ document.addEventListener("click", function (e) {
     if (x > imgNewGamePosX && x < (imgNewGamePosX + imgNewGameWidth) &&
         y > imgNewGamePosY && y < (imgNewGamePosY + imgNewGameHeight)) {
         setUpAllGameElements();
-        // Рандомим поле игрока
-        randowAllShips(arrayOfGameFieldPerson, arrayOfEmpyPositionsPerson);
-        // Рандомим поле ПК
-        randowAllShips(arrayOfGameFieldPC, arrayOfEmpyPositionsPC);
+        // Рандом поле Игрока
+        randomAllShips(arrayOfGameFieldPerson, arrayOfEmpyPositionsPerson);
+        // Рандом поле ПК
+        randomAllShips(arrayOfGameFieldPC, arrayOfEmpyPositionsPC);
+        ShipsInGame = true;
+        ChangesOnPage = true;
     }
-
+    makeAimOnEnemyField(e, true);
 });
 
 /* Проверка, куда навелся пользователь при передвежении мыши */
-document.addEventListener('mousemove', e => {
+document.addEventListener('mousemove', function (e) {
     let x = e.offsetX;
     let y = e.offsetY;
     // Пользователь навел курсор на "Новая игра"
@@ -324,6 +486,7 @@ document.addEventListener('mousemove', e => {
         aimOnButtonNewGame = false;
         ChangesOnPage = true;
     }
+    makeAimOnEnemyField(e, false);
 });
 
 //////////////////////////////////// Patterns /////////////////////////////////////////
