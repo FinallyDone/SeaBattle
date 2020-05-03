@@ -137,13 +137,13 @@ function renderShipsHitsMisses(arrayOfField, positionOfFirstCubeX, positionOfFir
                     if (arrayOfField[i][j] < 0)
                         ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
 
-                } else if (j < 7 && arrayOfField[i][j] != -100 && arrayOfField[i][j] <= 10) {
-                    if ((arrayOfField[i][j + 1] == arrayOfField[i][j] || arrayOfField[i][j + 1] == -arrayOfField[i][j]) && (arrayOfField[i][j + 2] == arrayOfField[i][j] || arrayOfField[i][j + 2] == -arrayOfField[i][j]) && (arrayOfField[i][j + 3] == arrayOfField[i][j] || arrayOfField[i][j + 3] == -arrayOfField[i][j])) {
+                } else if (arrayOfField[i][j] != -100 && arrayOfField[i][j] <= 10) {
+                    if (j < 7 && (arrayOfField[i][j + 1] == arrayOfField[i][j] || arrayOfField[i][j + 1] == -arrayOfField[i][j]) && (arrayOfField[i][j + 2] == arrayOfField[i][j] || arrayOfField[i][j + 2] == -arrayOfField[i][j]) && (arrayOfField[i][j + 3] == arrayOfField[i][j] || arrayOfField[i][j + 3] == -arrayOfField[i][j])) {
                         // Рисуем корабль в 4 клетках 
                         //Рисуем корабль горизонтально
                         ctx.drawImage(imgShips[3], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth * 4, imgShipOneHeight);
 
-                    } else if ((arrayOfField[i + 1][j] == arrayOfField[i][j] || arrayOfField[i + 1][j] == -arrayOfField[i][j]) && (arrayOfField[i + 2][j] == arrayOfField[i][j] || arrayOfField[i + 2][j] == -arrayOfField[i][j]) && (arrayOfField[i + 3][j] == arrayOfField[i][j] || arrayOfField[i + 3][j] == -arrayOfField[i][j])) {
+                    } else if (i < 7 && (arrayOfField[i + 1][j] == arrayOfField[i][j] || arrayOfField[i + 1][j] == -arrayOfField[i][j]) && (arrayOfField[i + 2][j] == arrayOfField[i][j] || arrayOfField[i + 2][j] == -arrayOfField[i][j]) && (arrayOfField[i + 3][j] == arrayOfField[i][j] || arrayOfField[i + 3][j] == -arrayOfField[i][j])) {
                         // Рисуем корабль в 4 клетках 
                         //Рисуем корабль вертикально
                         ctx.drawImage(imgShips[7], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight * 4);
@@ -617,8 +617,9 @@ function makeMoveForPc() {
                 break;
             case 4:
                 // поиск справа
-                // Справа граница, ищем сверху
+                // Справа граница, ищем на рандоме
                 if (x == 9) {
+                    lastPCmove = [-1, -1];
                     wherePCgoes = 1;
                     makeMoveForPc();
                 } else {
