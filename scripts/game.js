@@ -67,6 +67,7 @@ var imgShipOneHeight = 42;
 // размер игрового поля врага
 var widthGameFieldPCX = 526;
 var widthGameFieldPCY = 470;
+
 /* Элементы игровой механики */
 // Массив для рандома поля игры пользователя
 var arrayOfEmpyPositionsPerson = new Array(10);
@@ -74,6 +75,16 @@ var arrayOfGameFieldPerson = new Array(10);
 // Массив для рандома поля игры ПК
 var arrayOfEmpyPositionsPC = [];
 var arrayOfGameFieldPC = [];
+// Массив для рандомного поиска кораблей ПОльзователя
+var arrayPositionsForPCBrain = [];
+// Путь, куда пойдет ПК
+// 1 - вверх, 2 - вниз
+// 3 - влево, 4 - вправо
+var wherePCgoes = 1;
+// Последниий ход, куда ходил ПК
+var lastPCmove = [-1, -1];
+// Сколько элементов ПК надо уничтожить у корабля 
+var howMuchDestroyForPc = 0;
 
 //////////////////////////////////// Functions ////////////////////////////////////////
 
@@ -207,6 +218,7 @@ function setUpAllGameElements() {
     for (let i = 0; i < 100; i++) {
         arrayOfEmpyPositionsPC[i] = i + 1;
         arrayOfEmpyPositionsPerson[i] = i + 1;
+        arrayPositionsForPCBrain[i] = i + 1;
     }
 }
 
@@ -427,7 +439,7 @@ function findPositionFrom1Dto2D(position) {
 
 /* Определить позицию из 2-мерного в 1-мерном пространстве */
 function findPositionFrom2Dto1D(x, y) {
-    return (y * 10 + x);
+    return (y * 10 + x + 1);
 }
 
 /* Игрок целиться с возможностью выстрелить */
@@ -445,10 +457,12 @@ function makeAimOnEnemyField(event, click) {
                     positionAimY = i;
                     // Игрок стреляет по ПК
                     if (click) {
-                        if (arrayOfGameFieldPC[i][j] >= 0)
-                            // Игрок попал по кораблю ПК
+                        if (arrayOfGameFieldPC[i][j] >= 0) {
+                            // Игрок попал по кораблю или промахнулся ПК
                             makeFire(arrayOfGameFieldPC, positionAimX, positionAimY, "Person");
-                        ChangesOnPage = true;
+                            ChangesOnPage = true;
+                            makeMoveForPc();
+                        }
                     }
                 }
             }
@@ -462,6 +476,188 @@ function makeFire(arrayOfField, x, y, who) {
         arrayOfField[y][x] = -arrayOfField[y][x];
     else arrayOfField[y][x] = -100; // Промах
     checkWhoWon(arrayOfField, who)
+}
+
+/* Ход Пк */
+function makeMoveForPc() {
+    let x, y;
+    let randomPositionForMove, randCoor;
+    // ПК не знает, куда ходить
+    if (lastPCmove[0] == -1) {
+        // Пк выбирает рандомную координаты
+        randCoor = GetRandomInt(0, arrayPositionsForPCBrain.length-1);
+        randomPositionForMove = arrayPositionsForPCBrain[randCoor];
+        [x, y] = findPositionFrom1Dto2D(randomPositionForMove);
+    } else {
+        // ПК попал по кораблю, который больше, чем одна клетка
+        [x, y] = lastPCmove;
+        randomPositionForMove = findPositionFrom2Dto1D(x, y);
+    }
+
+    // Проверяем, куда будет выстрел
+    // Делается на рандоме
+    if (lastPCmove[0] == -1) {
+        wherePCgoes = 1;
+        if (arrayOfGameFieldPerson[y][x] >= 5 && arrayOfGameFieldPerson[y][x] <= 7) {
+            // Попали в одну часть 2-клеточного корабля
+            lastPCmove = [x, y];
+            howMuchDestroyForPc = 1;
+        } else if (arrayOfGameFieldPerson[y][x] >= 8 && arrayOfGameFieldPerson[y][x] <= 9) {
+            // Попали в одну часть 3-клеточного корабля
+            lastPCmove = [x, y];
+            howMuchDestroyForPc = 2;
+        } else if (arrayOfGameFieldPerson[y][x] == 10) {
+            // Попали в одну часть 4-клеточного корабля
+            lastPCmove = [x, y];
+            howMuchDestroyForPc = 3;
+        } else {
+            // ПК попал мимо, либо уничтожил 1-клеточный корабль
+            // Не знает, куда ему сходить, берет рандом в след ход
+            lastPCmove = [-1, -1];
+        }
+        // Исключаем эту точку из следующих действий ПК
+        arrayPositionsForPCBrain.splice(arrayPositionsForPCBrain.indexOf(randomPositionForMove), 1);
+        makeFire(arrayOfGameFieldPerson, x, y, "Pc");
+    } else {
+        // Поиск остальной части корабля
+        switch (wherePCgoes) {
+            case 1:
+                // поиск сверху
+                // Сверху граница, ищем снизу
+                if (y == 0) {
+                    wherePCgoes = 2;
+                    makeMoveForPc();
+                } else {
+                    if (arrayOfGameFieldPerson[y - 1][x] > 0) {
+                        if (howMuchDestroyForPc == 1) {
+                            // Уничтожили 2-кл корабль, ищем снова на рандоме
+                            lastPCmove = [-1, -1];
+                        } else if (howMuchDestroyForPc > 1) {
+                            lastPCmove = [x, y - 1];
+                            howMuchDestroyForPc--;
+                        }
+                        // Исключаем эту точку из следующих действий ПК
+                        randomPositionForMove = findPositionFrom2Dto1D(x, y - 1);
+                        arrayPositionsForPCBrain.splice(arrayPositionsForPCBrain.indexOf(randomPositionForMove), 1);
+                        makeFire(arrayOfGameFieldPerson, x, y - 1, "Pc");
+                    } else if (arrayOfGameFieldPerson[y - 1][x] == 0) {
+                        // промах
+                        wherePCgoes = 2;
+                        // Исключаем эту точку из следующих действий ПК
+                        randomPositionForMove = findPositionFrom2Dto1D(x, y - 1);
+                        arrayPositionsForPCBrain.splice(arrayPositionsForPCBrain.indexOf(randomPositionForMove), 1);
+                        makeFire(arrayOfGameFieldPerson, x, y - 1, "Pc");
+                    } else {
+                        // Клетка уже была взаимодействованна раньше
+                        wherePCgoes = 2;
+                        makeMoveForPc();
+                    }
+                }
+                break;
+            case 2:
+                // поиск снизу
+                // Снизу граница, ищем слева
+                if (y == 9) {
+                    wherePCgoes = 3;
+                    makeMoveForPc();
+                } else {
+                    if (arrayOfGameFieldPerson[y + 1][x] > 0) {
+                        if (howMuchDestroyForPc == 1) {
+                            // Уничтожили 2-кл корабль, ищем снова на рандоме
+                            lastPCmove = [-1, -1];
+                        } else if (howMuchDestroyForPc > 1) {
+                            lastPCmove = [x, y + 1];
+                            howMuchDestroyForPc--;
+                        }
+                        // Исключаем эту точку из следующих действий ПК
+                        randomPositionForMove = findPositionFrom2Dto1D(x, y + 1);
+                        arrayPositionsForPCBrain.splice(arrayPositionsForPCBrain.indexOf(randomPositionForMove), 1);
+                        makeFire(arrayOfGameFieldPerson, x, y + 1, "Pc");
+                    } else if (arrayOfGameFieldPerson[y + 1][x] == 0) {
+                        // промах
+                        wherePCgoes = 3;
+                        // Исключаем эту точку из следующих действий ПК
+                        randomPositionForMove = findPositionFrom2Dto1D(x, y + 1);
+                        arrayPositionsForPCBrain.splice(arrayPositionsForPCBrain.indexOf(randomPositionForMove), 1);
+                        makeFire(arrayOfGameFieldPerson, x, y + 1, "Pc");
+                    } else {
+                        // Клетка уже была взаимодействованна раньше
+                        wherePCgoes = 3;
+                        makeMoveForPc();
+                    }
+                }
+
+
+                break;
+            case 3:
+                // поиск слева
+                // Слева граница, ищем справа
+                if (x == 0) {
+                    wherePCgoes = 4;
+                    makeMoveForPc();
+                } else {
+                    if (arrayOfGameFieldPerson[y][x - 1] > 0) {
+                        if (howMuchDestroyForPc == 1) {
+                            // Уничтожили 2-кл корабль, ищем снова на рандоме
+                            lastPCmove = [-1, -1];
+                        } else if (howMuchDestroyForPc > 1) {
+                            lastPCmove = [x - 1, y];
+                            howMuchDestroyForPc--;
+                        }
+                        // Исключаем эту точку из следующих действий ПК
+                        randomPositionForMove = findPositionFrom2Dto1D(x - 1, y);
+                        arrayPositionsForPCBrain.splice(arrayPositionsForPCBrain.indexOf(randomPositionForMove), 1);
+                        makeFire(arrayOfGameFieldPerson, x - 1, y, "Pc");
+                    } else if (arrayOfGameFieldPerson[y][x - 1] == 0) {
+                        // промах
+                        wherePCgoes = 4;
+                        // Исключаем эту точку из следующих действий ПК
+                        randomPositionForMove = findPositionFrom2Dto1D(x - 1, y);
+                        arrayPositionsForPCBrain.splice(arrayPositionsForPCBrain.indexOf(randomPositionForMove), 1);
+                        makeFire(arrayOfGameFieldPerson, x - 1, y, "Pc");
+                    } else {
+                        // Клетка уже была взаимодействованна раньше
+                        wherePCgoes = 4;
+                        makeMoveForPc();
+                    }
+                }
+                break;
+            case 4:
+                // поиск справа
+                // Справа граница, ищем сверху
+                if (x == 9) {
+                    wherePCgoes = 1;
+                    makeMoveForPc();
+                } else {
+                    if (arrayOfGameFieldPerson[y][x + 1] > 0) {
+                        if (howMuchDestroyForPc == 1) {
+                            // Уничтожили 2-кл корабль, ищем снова на рандоме
+                            lastPCmove = [-1, -1];
+                        } else if (howMuchDestroyForPc > 1) {
+                            lastPCmove = [x + 1, y];
+                            howMuchDestroyForPc--;
+                        }
+                        // Исключаем эту точку из следующих действий ПК
+                        randomPositionForMove = findPositionFrom2Dto1D(x + 1, y);
+                        arrayPositionsForPCBrain.splice(arrayPositionsForPCBrain.indexOf(randomPositionForMove), 1);
+                        makeFire(arrayOfGameFieldPerson, x + 1, y, "Pc");
+                    } else if (arrayOfGameFieldPerson[y][x + 1] == 0) {
+                        // промах
+                        wherePCgoes = 1;
+                        // Исключаем эту точку из следующих действий ПК
+                        randomPositionForMove = findPositionFrom2Dto1D(x + 1, y);
+                        arrayPositionsForPCBrain.splice(arrayPositionsForPCBrain.indexOf(randomPositionForMove), 1);
+                        makeFire(arrayOfGameFieldPerson, x + 1, y, "Pc");
+                    } else {
+                        // Клетка уже была взаимодействованна раньше
+                        lastPCmove = [-1, -1];
+                        makeMoveForPc();
+                    }
+
+                }
+                break;
+        }
+    }
 }
 
 //////////////////////////////////// Events ///////////////////////////////////////////
