@@ -7,6 +7,8 @@ var Timer;
     для меньшей загрузки на страницу
 */
 var ChangesOnPage = false;
+// Проверка на победу ПК или Игрока
+var GameFinished = true;
 // Проверка  для кнопки новой игры
 var aimOnButtonNewGame = false;
 // Проверка для отрисовки кораблей
@@ -136,7 +138,7 @@ function renderShipsHitsMisses(arrayOfField, positionOfFirstCubeX, positionOfFir
                         if (arrayOfField[i + 2][j] < 0)
                             ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + (i + 2) * 47.4, imgShipOneWidth, imgShipOneHeight);
                     }
-                } else if (j < 7 && (arrayOfField[i][j + 1] == arrayOfField[i][j] || arrayOfField[i][j + 1] == -arrayOfField[i][j]) && (arrayOfField[i][j + 2] == arrayOfField[i][j] || arrayOfField[i][j + 2] == -arrayOfField[i][j]) && (arrayOfField[i][j + 3] == arrayOfField[i][j] || arrayOfField[i][j + 3] == -arrayOfField[i][j])) {
+                } else if (j < 7 && arrayOfField[i][j] != -100 && (arrayOfField[i][j + 1] == arrayOfField[i][j] || arrayOfField[i][j + 1] == -arrayOfField[i][j]) && (arrayOfField[i][j + 2] == arrayOfField[i][j] || arrayOfField[i][j + 2] == -arrayOfField[i][j]) && (arrayOfField[i][j + 3] == arrayOfField[i][j] || arrayOfField[i][j + 3] == -arrayOfField[i][j])) {
                     //Рисуем корабль горизонтально
                     ctx.drawImage(imgShips[3], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth * 4, imgShipOneHeight);
                     // Рисуем пожар
@@ -148,7 +150,7 @@ function renderShipsHitsMisses(arrayOfField, positionOfFirstCubeX, positionOfFir
                         ctx.drawImage(imgHit, positionOfFirstCubeX + (j + 2) * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
                     if (arrayOfField[i][j + 3] < 0)
                         ctx.drawImage(imgHit, positionOfFirstCubeX + (j + 3) * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
-                } else if (i < 7 && (arrayOfField[i + 1][j] == arrayOfField[i][j] || arrayOfField[i + 1][j] == -arrayOfField[i][j]) && (arrayOfField[i + 2][j] == arrayOfField[i][j] || arrayOfField[i + 2][j] == -arrayOfField[i][j]) && (arrayOfField[i + 3][j] == arrayOfField[i][j] || arrayOfField[i + 3][j] == -arrayOfField[i][j])) {
+                } else if (i < 7 && arrayOfField[i][j] != -100 && (arrayOfField[i + 1][j] == arrayOfField[i][j] || arrayOfField[i + 1][j] == -arrayOfField[i][j]) && (arrayOfField[i + 2][j] == arrayOfField[i][j] || arrayOfField[i + 2][j] == -arrayOfField[i][j]) && (arrayOfField[i + 3][j] == arrayOfField[i][j] || arrayOfField[i + 3][j] == -arrayOfField[i][j])) {
                     //Рисуем корабль вертикально
                     ctx.drawImage(imgShips[7], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight * 4);
                     // Рисуем пожар
@@ -388,6 +390,30 @@ function checkIfCanPlaceShipVertical(lengthOfShip, arrayOfField, x, y) {
     return ([false, y]);
 }
 
+/* Проверяет, кто победил */
+function checkWhoWon(arrayOfField, who) {
+    let someOneWON = true;
+    for (let i = 0; i < 10; i++) {
+        for (let j = 0; j < 10; j++) {
+            if (arrayOfField[i][j] > 0)
+                someOneWON = false;
+        }
+        if (!someOneWON)
+            break;
+    }
+
+    if (someOneWON)
+        if (who == "Person") {
+            // Победил человек
+            console.log("Won Person");
+            GameFinished = true;
+        } else {
+            // Победил ПК
+            console.log("Won PC");
+            GameFinished = true;
+        }
+}
+
 /* Определить позицию из 1-мерного в 2-мерном пространстве */
 function findPositionFrom1Dto2D(position) {
     let x, y;
@@ -421,7 +447,7 @@ function makeAimOnEnemyField(event, click) {
                     if (click) {
                         if (arrayOfGameFieldPC[i][j] >= 0)
                             // Игрок попал по кораблю ПК
-                            makeFire(arrayOfGameFieldPC, positionAimX, positionAimY);
+                            makeFire(arrayOfGameFieldPC, positionAimX, positionAimY, "Person");
                         ChangesOnPage = true;
                     }
                 }
@@ -431,10 +457,11 @@ function makeAimOnEnemyField(event, click) {
 }
 
 /* Стрельба по кораблю */
-function makeFire(arrayOfField, x, y) {
+function makeFire(arrayOfField, x, y, who) {
     if (arrayOfField[y][x] != 0)
         arrayOfField[y][x] = -arrayOfField[y][x];
     else arrayOfField[y][x] = -100; // Промах
+    checkWhoWon(arrayOfField, who)
 }
 
 //////////////////////////////////// Events ///////////////////////////////////////////
@@ -450,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Рендер игрового поля
     // Используем таймер, чтобы дать подгрузиться
     // всем картинкам для рендера
-    Timer = setInterval(renderGameField, 100);
+    Timer = setInterval(renderGameField, 80);
 })
 
 /* Клик по игровому полю и кнопке */
@@ -467,8 +494,10 @@ document.addEventListener("click", function (e) {
         randomAllShips(arrayOfGameFieldPC, arrayOfEmpyPositionsPC);
         ShipsInGame = true;
         ChangesOnPage = true;
+        GameFinished = false;
     }
-    makeAimOnEnemyField(e, true);
+    if (!GameFinished)
+        makeAimOnEnemyField(e, true);
 });
 
 /* Проверка, куда навелся пользователь при передвежении мыши */
@@ -482,11 +511,14 @@ document.addEventListener('mousemove', function (e) {
             aimOnButtonNewGame = true;
             ChangesOnPage = true;
         }
-    } else if (aimOnButtonNewGame) {
-        aimOnButtonNewGame = false;
-        ChangesOnPage = true;
+    } else {
+        if (aimOnButtonNewGame) {
+            aimOnButtonNewGame = false;
+            ChangesOnPage = true;
+        }
+        if (!GameFinished)
+            makeAimOnEnemyField(e, false);
     }
-    makeAimOnEnemyField(e, false);
 });
 
 //////////////////////////////////// Patterns /////////////////////////////////////////
