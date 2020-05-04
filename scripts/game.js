@@ -13,7 +13,7 @@ var howMuchMilSecondForRendering = 50;
 // пользователь не ходил быстрее Пк
 var computerIsMakingMove = false;
 // Сколько миллисекунд нужно Пк, чтобы подумать
-var howMuchMilSecondForPc = 500;
+var howMuchMilSecondForPc = 700;
 // Проверка на победу ПК или Игрока
 var GameFinished = true;
 // Проверка  для кнопки новой игры
@@ -22,6 +22,8 @@ var aimOnButtonNewGame = false;
 var ShipsInGame = false;
 // Проверка для отрисовки прицела
 var aimOnEnemyField = false;
+// Проверка для отрисовки "чей ход"
+var personIsMakingMove = true;
 // положение прицела
 var positionAimX;
 var positionAimY;
@@ -62,12 +64,30 @@ var imgNewGameChosenPosY = 25;
 var imgNewGameChosenWidth = 420;
 var imgNewGameChosenHeight = 83;
 
+/* Картинки для визуализации чей ход */
+// Картинка "ИГРОК"
+var imgSignPlayer = new Image();
+// Картинка "КОМПЬЮТЕР"
+var imgSignPC = new Image();
+
+// Начальная позиция для "ИГРОК"
+var positionOfSignPersonX = 758;
+var positionOfSignPersonY = 71;
+// Начальная позиция для "КОМПЬЮТЕР"
+var positionOfSignPCX = 758;
+var positionOfSignPCY = 71;
 // Начальная позиция для кораблей у Игрока
 var positionOfFirstCubePersonX = 76;
 var positionOfFirstCubePersonY = 167;
 // Начальная позиция для кораблей у ПК
 var positionOfFirstCubePCX = 600;
 var positionOfFirstCubePCY = 167;
+// Размер картинки "ИГРОК"
+var widthOfSignPerson = 120;
+var heightOfSignPerson = 30;
+// Размер картинки "КОМПЬЮТЕР"
+var widthOfSignPC = 190;
+var heightOfSignPC = 30;
 // Размеры картинки "1-клеточного корабля"
 var imgShipOneWidth = 47;
 var imgShipOneHeight = 42;
@@ -176,6 +196,7 @@ function renderGameField() {
         // рендер поля игры
         ctx.drawImage(imgBackgroundGame, imgBackgroundGamePosX, imgBackgroundGamePosY,
             imgBackgroundGameWidth, imgBackgroundGameHeight);
+        
         // рендер кнопки "новой игры"
         if (aimOnButtonNewGame)
             ctx.drawImage(imgNewGameChosen, imgNewGameChosenPosX, imgNewGameChosenPosY, imgNewGameChosenWidth, imgNewGameChosenHeight);
@@ -189,6 +210,11 @@ function renderGameField() {
         // рендер курсора прицела на вражеском поле
         if (aimOnEnemyField) {
             renderCursorOnEnemyField();
+        }
+        if(personIsMakingMove){
+            ctx.drawImage(imgSignPlayer, positionOfSignPersonX, positionOfSignPersonY, widthOfSignPerson, heightOfSignPerson);
+        } else {
+            ctx.drawImage(imgSignPC, positionOfSignPCX, positionOfSignPCY, widthOfSignPC, heightOfSignPC);
         }
         ChangesOnPage = false;
     }
@@ -230,6 +256,8 @@ function setUpAllImg() {
     imgBackgroundGame.src = srcImgs + "background-game-notebook.png";
     imgNewGame.src = srcImgs + "new-game.png";
     imgNewGameChosen.src = srcImgs + "new-game-chosen.png";
+    imgSignPlayer.src = srcImgs + "making-move-person.png"
+    imgSignPC.src = srcImgs + "making-move-pc.png"
 
 }
 
@@ -405,9 +433,7 @@ function randomAllShips(arrayOfField, arrayOfFieldEmptyPos, who) {
     console.log(arrayOfField);
 }
 
-/*
-    Определяет, можно ли поставить корабль горизонтально точки
- */
+/* Определяет, можно ли поставить корабль горизонтально точки */
 function checkIfCanPlaceShipHorizontal(tempLengthOfShip, tempArrayOfField, arrayOfFieldEmptyPos, X, Y) {
     let canPlaceShip = true;
 
@@ -442,7 +468,7 @@ function checkIfCanPlaceShipHorizontal(tempLengthOfShip, tempArrayOfField, array
     return ([false, X]);
 }
 
-// Определяет, можно ли поставить корабль вертикально точки
+/* Определяет, можно ли поставить корабль вертикально точки */
 function checkIfCanPlaceShipVertical(tempLengthOfShip, tempArrayOfField, arrayOfFieldEmptyPos, X, Y) {
     let canPlaceShip = true;
 
@@ -536,6 +562,7 @@ function makeAimOnEnemyField(event, click) {
                                 makeFire(arrayOfGameFieldPC, positionAimX, positionAimY, "Person");
                                 ChangesOnPage = true;
                                 if (!GameFinished) {
+                                    personIsMakingMove = false;
                                     computerIsMakingMove = true;
                                     setTimeout(makeMoveForPc, howMuchMilSecondForPc);
                                 }
@@ -668,8 +695,6 @@ function makeMoveForPc() {
                         makeMoveForPc();
                     }
                 }
-
-
                 break;
             case 3:
                 // поиск слева
@@ -741,8 +766,14 @@ function makeMoveForPc() {
                 break;
         }
     }
+    // Отрисовка хода Игрока
+    personIsMakingMove = true;
     // Пк закончил ход, пользователь снова может взаимодействовать 
     computerIsMakingMove = false;
+    // Можно убрать, чтобы была иллюзия долго прогрузки,
+    // когда пользователь не двигает мышку
+    ChangesOnPage = true;
+    renderGameField();
 }
 
 //////////////////////////////////// Events ///////////////////////////////////////////
