@@ -7,6 +7,13 @@ var Timer;
     для меньшей загрузки на страницу
 */
 var ChangesOnPage = false;
+// Какая частота обновлений кадров для рендера поля
+var howMuchMilSecondForRendering = 50;
+// Проверка сходил ли компьютер, чтобы 
+// пользователь не ходил быстрее Пк
+var computerIsMakingMove = false;
+// Сколько миллисекунд нужно Пк, чтобы подумать
+var howMuchMilSecondForPc = 500;
 // Проверка на победу ПК или Игрока
 var GameFinished = true;
 // Проверка  для кнопки новой игры
@@ -149,11 +156,11 @@ function renderShipsHitsMisses(arrayOfField, positionOfFirstCubeX, positionOfFir
                         ctx.drawImage(imgShips[7], positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight * 4);
 
                     }
-                    
+
                     // Рисуем пожар
                     if (arrayOfField[i][j] < 0)
                         ctx.drawImage(imgHit, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
-                    
+
                 } else if (arrayOfField[i][j] == -100) {
                     // Рисуем промах
                     ctx.drawImage(imgMiss, positionOfFirstCubeX + j * 52.9, positionOfFirstCubeY + i * 47.4, imgShipOneWidth, imgShipOneHeight);
@@ -243,7 +250,6 @@ function randomAllShips(arrayOfField, arrayOfFieldEmptyPos, who) {
     // рандом позиции кораблей
     while (countSearchForPlace < ships.length) {
         let lengthOfShip = ships[countSearchForPlace];
-        let canPlaceShip = true;
 
         // Проверка, как именно ставим корабль
         let placeShipHorizontal = false;
@@ -264,20 +270,28 @@ function randomAllShips(arrayOfField, arrayOfFieldEmptyPos, who) {
         // Ставим сначала горизонтально, если не получается, то вертикально
         if (placeByRandom == 1) {
             // Поиск места горизонтально около выбранной позиции
-            [placeShipHorizontal, x] = checkIfCanPlaceShipHorizontal(lengthOfShip, arrayOfField, x, y);
+            [placeShipHorizontal, x] = checkIfCanPlaceShipHorizontal(lengthOfShip, arrayOfField, arrayOfFieldEmptyPos, x, y);
             // Если не можем поставить корабль горизонтально около выбранной позиции
             // Ищем, можем ли поставить его вертикально около выбранной позиции
             if (!placeShipHorizontal)
-                [placeShipVertical, y] = checkIfCanPlaceShipVertical(lengthOfShip, arrayOfField, x, y);
+                [placeShipVertical, y] = checkIfCanPlaceShipVertical(lengthOfShip, arrayOfField, arrayOfFieldEmptyPos, x, y);
         } else {
             // Ставим сначала вертикально, если не получается, то горизонтально
-            [placeShipVertical, y] = checkIfCanPlaceShipVertical(lengthOfShip, arrayOfField, x, y);
+            [placeShipVertical, y] = checkIfCanPlaceShipVertical(lengthOfShip, arrayOfField, arrayOfFieldEmptyPos, x, y);
             if (!placeShipVertical)
-                [placeShipHorizontal, x] = checkIfCanPlaceShipHorizontal(lengthOfShip, arrayOfField, x, y);
+                [placeShipHorizontal, x] = checkIfCanPlaceShipHorizontal(lengthOfShip, arrayOfField, arrayOfFieldEmptyPos, x, y);
         }
 
         // если нашли место, ставим корабль
         if (placeShipHorizontal || placeShipVertical) {
+            // Элемент для исключения возможности ставить корабли
+            // около данного корабля 
+            let clearAboveShip = 1;
+            let clearUnderShip = 1;
+            let clearLeftShip = 1;
+            let clearRightShip = 1;
+
+            let notMoreEmptyPosition;
             let positiongForDeleting = 0;
             // Ставим горизонтально корабль
             if (placeShipHorizontal) {
@@ -289,8 +303,10 @@ function randomAllShips(arrayOfField, arrayOfFieldEmptyPos, who) {
 
                 // Убираем свободные позиции, в которые записали корабль
                 // для будущего рандома других кораблей
-                let notMoreEmptyPosition = findPositionFrom2Dto1D(x, y) + 1;
-                arrayOfFieldEmptyPos.splice(arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition), 4);
+                notMoreEmptyPosition = findPositionFrom2Dto1D(x, y);
+                arrayOfFieldEmptyPos.splice(arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition), lengthOfShip);
+                clearAboveShip = lengthOfShip;
+                clearUnderShip = lengthOfShip;
             }
 
             // Ставим вертикально корабль
@@ -304,11 +320,75 @@ function randomAllShips(arrayOfField, arrayOfFieldEmptyPos, who) {
 
                 // Убираем свободные позиции, в которые записали корабль
                 // для будущего рандома других кораблей
-                let notMoreEmptyPosition = findPositionFrom2Dto1D(x, y) + 1;
+                notMoreEmptyPosition = findPositionFrom2Dto1D(x, y);
                 for (let i = 0; i < lengthOfShip; i++) {
                     arrayOfFieldEmptyPos.splice(arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition + (i * 10)), 1);
                 }
+                clearLeftShip = lengthOfShip;
+                clearRightShip = lengthOfShip;
             }
+
+            let checkPosition;
+            // Убираем координаты вокруг корабля для рандома
+            // убираем сверху
+            if (y != 0) {
+                // Проверка, свободно ли место или уже было удалено ранее
+                checkPosition = arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition - 10);
+                if (checkPosition != -1)
+                    arrayOfFieldEmptyPos.splice(checkPosition, clearAboveShip);
+            }
+            // убираем снизу
+            if (y != 9) {
+                // Проверка, свободно ли место или уже было удалено ранее
+                checkPosition = arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition + clearLeftShip * 10);
+                if (checkPosition != -1)
+                    arrayOfFieldEmptyPos.splice(checkPosition, clearUnderShip);
+            }
+            // убираем слева
+            if (x != 0)
+                for (let i = 0; i < clearLeftShip; i++) {
+                    // Проверка, свободно ли место или уже было удалено ранее
+                    checkPosition = arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition + (i * 10) - 1);
+                    if (checkPosition != -1)
+                        arrayOfFieldEmptyPos.splice(checkPosition, 1);
+                }
+            if (x != 9)
+                // убираем справа
+                for (let i = 0; i < clearRightShip; i++) {
+                    // Проверка, свободно ли место или уже было удалено ранее
+                    checkPosition = arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition + (i * 10) + clearAboveShip);
+                    if (checkPosition != -1)
+                        arrayOfFieldEmptyPos.splice(checkPosition, 1);
+                }
+
+
+            // убираем левый верхний угол
+            if (x > 0 && y > 0)
+                // Проверка, свободно ли место или уже было удалено ранее
+                checkPosition = arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition - 11);
+            if (checkPosition != -1)
+                arrayOfFieldEmptyPos.splice(checkPosition, 1);
+
+            // убираем правый верхний угол
+            if (x < 9 && y > 0)
+                // Проверка, свободно ли место или уже было удалено ранее
+                checkPosition = arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition - 10 + clearAboveShip);
+            if (checkPosition != -1)
+                arrayOfFieldEmptyPos.splice(checkPosition, 1);
+
+            // убираем левый нижний угол
+            if (x > 0 && y < 9)
+                // Проверка, свободно ли место или уже было удалено ранее
+                checkPosition = arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition + clearLeftShip * 10 - 1);
+            if (checkPosition != -1)
+                arrayOfFieldEmptyPos.splice(checkPosition, 1);
+
+            // убираем правый нижний угол
+            if (x < 9 && y < 9)
+                // Проверка, свободно ли место или уже было удалено ранее
+                checkPosition = arrayOfFieldEmptyPos.indexOf(notMoreEmptyPosition + clearLeftShip * 10 + clearAboveShip);
+            if (checkPosition != -1)
+                arrayOfFieldEmptyPos.splice(checkPosition, 1);
 
             tempArrayOfFieldEmptyPos = arrayOfFieldEmptyPos;
             countSearchForPlace++;
@@ -328,16 +408,18 @@ function randomAllShips(arrayOfField, arrayOfFieldEmptyPos, who) {
 /*
     Определяет, можно ли поставить корабль горизонтально точки
  */
-function checkIfCanPlaceShipHorizontal(tempLengthOfShip, tempArrayOfField, X, Y) {
+function checkIfCanPlaceShipHorizontal(tempLengthOfShip, tempArrayOfField, arrayOfFieldEmptyPos, X, Y) {
     let canPlaceShip = true;
 
     for (let j = 0; j < tempLengthOfShip; j++) {
         canPlaceShip = true;
+        let checkPosition;
 
         for (let i = 0; i < tempLengthOfShip; i++) {
             // Чтобы не заходить вне массива
             if ((X - i + j) < 10 && (X - i + j) >= 0) {
-                if (tempArrayOfField[Y][X - i + j] != 0)
+                checkPosition = findPositionFrom2Dto1D(X - i + j, Y);
+                if (tempArrayOfField[Y][X - i + j] != 0 || arrayOfFieldEmptyPos.indexOf(checkPosition) == -1)
                     canPlaceShip = false;
             } else {
                 canPlaceShip = false;
@@ -361,33 +443,35 @@ function checkIfCanPlaceShipHorizontal(tempLengthOfShip, tempArrayOfField, X, Y)
 }
 
 // Определяет, можно ли поставить корабль вертикально точки
-function checkIfCanPlaceShipVertical(lengthOfShip, arrayOfField, x, y) {
+function checkIfCanPlaceShipVertical(tempLengthOfShip, tempArrayOfField, arrayOfFieldEmptyPos, X, Y) {
     let canPlaceShip = true;
 
-    for (let j = 0; j < lengthOfShip; j++) {
+    for (let j = 0; j < tempLengthOfShip; j++) {
         canPlaceShip = true;
+        let checkPosition;
 
-        for (let i = 0; i < lengthOfShip; i++) {
+        for (let i = 0; i < tempLengthOfShip; i++) {
             // Чтобы не заходить вне массива
-            if ((y - i + j) < 10 && (y - i + j) >= 0) {
-                if (arrayOfField[y - i + j][x] != 0)
+            if ((Y - i + j) < 10 && (Y - i + j) >= 0) {
+                checkPosition = findPositionFrom2Dto1D(X, Y - i + j);
+                if (tempArrayOfField[Y - i + j][X] != 0 || arrayOfFieldEmptyPos.indexOf(checkPosition) == -1)
                     canPlaceShip = false;
             } else {
                 canPlaceShip = false;
             }
 
             // Если нашли место для корабля, записываем начальную позицию корабля
-            if (canPlaceShip && (i == (lengthOfShip - 1))) {
-                y = y - i + j;
+            if (canPlaceShip && (i == (tempLengthOfShip - 1))) {
+                Y = Y - i + j;
             }
         }
 
         // Нашли место для корабля
         if (canPlaceShip) {
-            return ([true, y])
+            return ([true, Y])
         }
     }
-    return ([false, y]);
+    return ([false, Y]);
 }
 
 /* Проверяет, кто победил */
@@ -435,22 +519,27 @@ function makeAimOnEnemyField(event, click) {
     let x = event.offsetX;
     let y = event.offsetY;
     // Игрок целит по вражескому полю
-    if (x >= positionOfFirstCubePCX && x <= (positionOfFirstCubePCX + widthGameFieldPCX) && y >= positionOfFirstCubePCY && y <= (positionOfFirstCubePCY + widthGameFieldPCY)) {
-        for (let i = 0; i < 10; i++) {
-            for (let j = 0; j < 10; j++) {
-                if (x >= (positionOfFirstCubePCX + j * 52.9) && x <= (positionOfFirstCubePCX + j * 52.9 + imgShipOneWidth) && y >= (positionOfFirstCubePCY + i * 47.4) && y <= (positionOfFirstCubePCY + i * 47.4 + imgShipOneHeight)) {
-                    aimOnEnemyField = true;
-                    ChangesOnPage = true;
-                    positionAimX = j;
-                    positionAimY = i;
-                    // Игрок стреляет по ПК
-                    if (click) {
-                        console.log(arrayOfGameFieldPC);
-                        if (arrayOfGameFieldPC[i][j] >= 0) {
-                            // Игрок попал по кораблю или промахнулся ПК
-                            makeFire(arrayOfGameFieldPC, positionAimX, positionAimY, "Person");
-                            ChangesOnPage = true;
-                            makeMoveForPc();
+    if (!computerIsMakingMove) {
+        if (x >= positionOfFirstCubePCX && x <= (positionOfFirstCubePCX + widthGameFieldPCX) && y >= positionOfFirstCubePCY && y <= (positionOfFirstCubePCY + widthGameFieldPCY)) {
+            for (let i = 0; i < 10; i++) {
+                for (let j = 0; j < 10; j++) {
+                    if (x >= (positionOfFirstCubePCX + j * 52.9) && x <= (positionOfFirstCubePCX + j * 52.9 + imgShipOneWidth) && y >= (positionOfFirstCubePCY + i * 47.4) && y <= (positionOfFirstCubePCY + i * 47.4 + imgShipOneHeight)) {
+                        aimOnEnemyField = true;
+                        ChangesOnPage = true;
+                        positionAimX = j;
+                        positionAimY = i;
+                        // Игрок стреляет по ПК
+                        if (click) {
+                            console.log(arrayOfGameFieldPC);
+                            if (arrayOfGameFieldPC[i][j] >= 0) {
+                                // Игрок попал по кораблю или промахнулся ПК
+                                makeFire(arrayOfGameFieldPC, positionAimX, positionAimY, "Person");
+                                ChangesOnPage = true;
+                                if (!GameFinished) {
+                                    computerIsMakingMove = true;
+                                    setTimeout(makeMoveForPc, howMuchMilSecondForPc);
+                                }
+                            }
                         }
                     }
                 }
@@ -652,6 +741,8 @@ function makeMoveForPc() {
                 break;
         }
     }
+    // Пк закончил ход, пользователь снова может взаимодействовать 
+    computerIsMakingMove = false;
 }
 
 //////////////////////////////////// Events ///////////////////////////////////////////
@@ -667,7 +758,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Рендер игрового поля
     // Используем таймер, чтобы дать подгрузиться
     // всем картинкам для рендера
-    Timer = setInterval(renderGameField, 80);
+    Timer = setInterval(renderGameField, howMuchMilSecondForRendering);
 })
 
 /* Клик по игровому полю и кнопке */
