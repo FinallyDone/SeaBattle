@@ -25,3 +25,9 @@ body {
     height: 100%;
     position: relative;
 }
+
+.logo{
+    max-width: 1000px;
+    min-width: 320px;
+    width: 100%;
+}
