@@ -10,7 +10,7 @@ var ChangesOnPage = false;
 // Какая частота обновлений кадров для рендера поля
 var howMuchMilSecondForRendering = 50;
 // Проверка сходил ли компьютер, чтобы 
-// пользователь не ходил быстрее Пк
+// Пользователь не ходил быстрее Пк
 var computerIsMakingMove = false;
 // Сколько миллисекунд нужно Пк, чтобы подумать
 var howMuchMilSecondForPc = 700;
@@ -24,7 +24,11 @@ var ShipsInGame = false;
 var aimOnEnemyField = false;
 // Проверка для отрисовки "чей ход"
 var personIsMakingMove = true;
-// положение прицела
+// Проверка победил ли Игрок
+var PersonWon = false;
+// Проверка победил ли ПК
+var PCWon = false;
+// Положение прицела
 var positionAimX;
 var positionAimY;
 /* "canvas" */
@@ -69,6 +73,10 @@ var imgNewGameChosenHeight = 83;
 var imgSignPlayer = new Image();
 // Картинка "КОМПЬЮТЕР"
 var imgSignPC = new Image();
+// Картинка победы игрока
+var imgPersonWon = new Image();
+// Картинка победы ПК
+var imgPCWon = new Image();
 
 // Начальная позиция для "ИГРОК"
 var positionOfSignPersonX = 758;
@@ -76,6 +84,9 @@ var positionOfSignPersonY = 71;
 // Начальная позиция для "КОМПЬЮТЕР"
 var positionOfSignPCX = 758;
 var positionOfSignPCY = 71;
+// Начальная позиция победы ПК и Игрока
+var positionOfWinPcOrPersonX = 360;
+var positionOfWinPcOrPersonY = 200;
 // Начальная позиция для кораблей у Игрока
 var positionOfFirstCubePersonX = 76;
 var positionOfFirstCubePersonY = 167;
@@ -88,6 +99,9 @@ var heightOfSignPerson = 30;
 // Размер картинки "КОМПЬЮТЕР"
 var widthOfSignPC = 190;
 var heightOfSignPC = 30;
+// Размер картинки победы ПК или игрока
+var widthWinPcOrPerson = 500;
+var heightWinPcOrPerson = 200;
 // Размеры картинки "1-клеточного корабля"
 var imgShipOneWidth = 47;
 var imgShipOneHeight = 42;
@@ -196,7 +210,7 @@ function renderGameField() {
         // рендер поля игры
         ctx.drawImage(imgBackgroundGame, imgBackgroundGamePosX, imgBackgroundGamePosY,
             imgBackgroundGameWidth, imgBackgroundGameHeight);
-        
+
         // рендер кнопки "новой игры"
         if (aimOnButtonNewGame)
             ctx.drawImage(imgNewGameChosen, imgNewGameChosenPosX, imgNewGameChosenPosY, imgNewGameChosenWidth, imgNewGameChosenHeight);
@@ -211,12 +225,23 @@ function renderGameField() {
         if (aimOnEnemyField) {
             renderCursorOnEnemyField();
         }
-        if(personIsMakingMove){
+
+        // Рендер того, чей ход
+        if (personIsMakingMove) {
             ctx.drawImage(imgSignPlayer, positionOfSignPersonX, positionOfSignPersonY, widthOfSignPerson, heightOfSignPerson);
         } else {
             ctx.drawImage(imgSignPC, positionOfSignPCX, positionOfSignPCY, widthOfSignPC, heightOfSignPC);
         }
-        ChangesOnPage = false;
+
+        // рендер победы кого-либо
+        if (GameFinished) {
+            if (PersonWon) {
+                ctx.drawImage(imgPersonWon, positionOfWinPcOrPersonX, positionOfWinPcOrPersonY, widthWinPcOrPerson, heightWinPcOrPerson);
+            } else if(PCWon){
+                ctx.drawImage(imgPCWon, positionOfWinPcOrPersonX, positionOfWinPcOrPersonY, widthWinPcOrPerson, heightWinPcOrPerson);
+            }
+            ChangesOnPage = false;
+        }
     }
 }
 
@@ -256,9 +281,10 @@ function setUpAllImg() {
     imgBackgroundGame.src = srcImgs + "background-game-notebook.png";
     imgNewGame.src = srcImgs + "new-game.png";
     imgNewGameChosen.src = srcImgs + "new-game-chosen.png";
-    imgSignPlayer.src = srcImgs + "making-move-person.png"
-    imgSignPC.src = srcImgs + "making-move-pc.png"
-
+    imgSignPlayer.src = srcImgs + "making-move-person.png";
+    imgSignPC.src = srcImgs + "making-move-pc.png";
+    imgPersonWon.src = srcImgs + "person-won.png";
+    imgPCWon.src = srcImgs + "pc-won.png";
 }
 
 /* Рандом кораблей для игрового поля */
@@ -515,11 +541,11 @@ function checkWhoWon(arrayOfField, who) {
     if (someOneWON)
         if (who == "Person") {
             // Победил человек
-            console.log("Won Person");
+            PersonWon = true;
             GameFinished = true;
         } else {
             // Победил ПК
-            console.log("Won PC");
+            PCWon = true;
             GameFinished = true;
         }
 }
@@ -804,6 +830,8 @@ document.addEventListener("click", function (e) {
         randomAllShips(arrayOfGameFieldPerson, arrayOfEmpyPositionsPerson, "Person");
         // Рандом поле ПК
         randomAllShips(arrayOfGameFieldPC, arrayOfEmpyPositionsPC, "PC");
+        PersonWon = false;
+        PCWon = false;
         ShipsInGame = true;
         ChangesOnPage = true;
         GameFinished = false;
